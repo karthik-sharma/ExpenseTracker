@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, Depends, HTTPException
 from typing import Union
 from .schema import UserPayload, ExpensePayload, LoginPayload
@@ -12,7 +13,6 @@ app = FastAPI()
 # Store and retrieve encryption key
 key = os.getenv("FERNET_KEY", Fernet.generate_key())
 fernet = Fernet(key)
-
 
 
 @app.post("/register_user/")

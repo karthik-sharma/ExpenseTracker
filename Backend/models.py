@@ -6,6 +6,7 @@ from db_connection import engine
 class User(Base):
     __tablename__ = "users" 
 
+    id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String, unique=True, nullable=False) 
     name = Column(String, nullable=False)
     password = Column(String, nullable=False)
