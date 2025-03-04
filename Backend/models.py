@@ -1,24 +1,28 @@
 from sqlalchemy import Column, String, Integer, DateTime
 from db_connection import Base
+from db_connection import engine
 
 
 class User(Base):
-    __tableame__ = "users"
+    __tablename__ = "users" 
 
-    id = Column("id", Integer, primary_key=True)
-    username = Column("username", String, primary_key=True)
-    name = Column("name", String, nullable=False)
-    password = Column("password", String, nullable=False)
+    id = Column(Integer, primary_key=True)  
+    username = Column(String, unique=True, nullable=False) 
+    name = Column(String, nullable=False)
+    password = Column(String, nullable=False)
 
-class ExpanseInfo(Base):
+
+class ExpenseInfo(Base):  
     __tablename__ = "expenses"
 
-    id = Column("id", Integer, primary_key=True)
-    username = Column("username", String, primary_key=True)
-    amount = Column("amount", Integer)
-    category = Column("category", String)
-    date = Column("date", DateTime)
+    id = Column(Integer, primary_key=True)
+    username = Column(String, primary_key=True)  
+    amount = Column(Integer, nullable=False)
+    category = Column(String, nullable=False)
 
 
 
+    date = Column(DateTime, nullable=False)
+
+Base.metadata.create_all(engine)
 

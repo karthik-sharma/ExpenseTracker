@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from typing import Union
 from schema import UserPayload, ExpensePayload, LoginPayload
-from models import User, ExpanseInfo
+from models import User, ExpenseInfo
 from db_connection import get_db
 from sqlalchemy.orm import Session
 from cryptography.fernet import Fernet
@@ -47,7 +47,7 @@ async def login_user(payload: LoginPayload, db:Session = Depends(get_db)):
 async def save_expenses(payload: ExpensePayload, db: Session = Depends(get_db)):
 
     if payload:
-        user_expenses = ExpanseInfo(**payload.__dict__)
+        user_expenses = ExpenseInfo(**payload.__dict__)
         db.add(user_expenses)
         db.commit()
         db.refresh(user_expenses)
