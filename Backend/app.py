@@ -1,87 +1,99 @@
 from fastapi import FastAPI, Depends, HTTPException
 from typing import Union
-from schema import UserPayload, ExpensePayload, LoginPayload
+from .schema import UserPayload, ExpensePayload, LoginPayload
 from models import User, ExpenseInfo
 from db_connection import get_db
 from sqlalchemy.orm import Session
 from cryptography.fernet import Fernet
+import os
 
 app = FastAPI()
-key = Fernet.generate_key()
 
-# Instance the Fernet class with the key
-
+# Store and retrieve encryption key
+key = os.getenv("FERNET_KEY", Fernet.generate_key())
 fernet = Fernet(key)
 
 
-@app.post("/register_user/")
-async def register_user(payload: UserPayload, db:Session = Depends(get_db)):
 
+@app.post("/register_user/")
+async def register_user(payload: UserPayload, db: Session = Depends(get_db)):
     if payload:
-        payload.password = fernet.encrypt(payload.password.encode())
+        payload.password = fernet.encrypt(payload.password.encode()).decode()
         new_user = User(**payload.__dict__)
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-    
-    return {"new user registered"}
+
+    return {"message": "New user registered successfully"}
+
 
 @app.post("/login_user/")
-async def login_user(payload: LoginPayload, db:Session = Depends(get_db)):
+async def login_user(payload: LoginPayload, db: Session = Depends(get_db)):
+    get_user = db.query(User).filter(User.username == payload.username).first()
 
-    if payload:
-        passkey = payload.password
-        user_name = payload.username
+    if not get_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-        get_user = db.query(User).filter(User.username == user_name).first()
-        if get_user:
-            decrypt_password = fernet.decrypt(get_user.password).decode()
-            if  decrypt_password != passkey:
-                 raise HTTPException(status_code=404, detail="User not found")
-            
-            return {"message": "Login successful", "user": user_name}
-        else:
-            raise HTTPException(status_code=404, detail="User not found")
+    try:
+        decrypt_password = fernet.decrypt(get_user.password.encode()).decode()
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid password")
+
+    if decrypt_password != payload.password:
+        raise HTTPException(status_code=401, detail="Incorrect password")
+
+    return {"message": "Login successful", "user": payload.username}
+
 
 @app.post("/save_expenses/")
 async def save_expenses(payload: ExpensePayload, db: Session = Depends(get_db)):
+    new_expense = ExpenseInfo(**payload.__dict__)
+    db.add(new_expense)
+    db.commit()
+    db.refresh(new_expense)
 
-    if payload:
-        user_expenses = ExpenseInfo(**payload.__dict__)
-        db.add(user_expenses)
-        db.commit()
-        db.refresh(user_expenses)
-    
-    return {"user expenses saved"}
+    return {"message": "User expenses saved successfully"}
+
 
 @app.post("/edit_expenses/{item_id}")
 async def edit_expenses(item_id: int, payload: ExpensePayload, db: Session = Depends(get_db)):
+    expense = db.query(ExpenseInfo).filter(ExpenseInfo.id == item_id).first()
+    
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense record not found")
 
-    data = db.query(User).filter(User.id == item_id).first()
-    if data:
-        payload = payload.__dict__
-        data.username = payload.get("username", data.username)
-        data.category = payload.get("category", data.category)
-        data.amount = payload.get("amount", data.amount)
-        data.date = payload.get("date", data.date)
+    # Update only the provided fields
+    for key, value in payload.__dict__.items():
+        if value is not None:
+            setattr(expense, key, value)
 
-        db.commit()
-        db.refresh(data)
-        return {"data updated successfully"}
+    db.commit()
+    db.refresh(expense)
+    return {"message": "Data updated successfully"}
+
 
 @app.delete("/delete_data/{item_id}")
 async def delete(item_id: int, db: Session = Depends(get_db)):
-    data = db.query(User).filter(User.id == item_id).first()
-    if data:
-        db.delete(data)
-        db.commit()
-        return {"record deleted successfully"}
+    expense = db.query(ExpenseInfo).filter(ExpenseInfo.id == item_id).first()
 
-@app.post("/search_data/{item_id}")
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense record not found")
+
+    db.delete(expense)
+    db.commit()
+    return {"message": "Record deleted successfully"}
+
+
+@app.get("/search_data/{item_id}")
 async def get(item_id: int, db: Session = Depends(get_db)):
-    from db_connection import User
-    data = db.query(User).filter(User.id == item_id).first()
-    if data:
-        data.__dict__
-        return {"username": data["username"], "amount": data["amount"],
-                "category": data["category"], "date": data["date"]}
+    expense = db.query(ExpenseInfo).filter(ExpenseInfo.id == item_id).first()
+
+    if not expense:
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    return {
+        "username": expense.username,
+        "amount": expense.amount,
+        "category": expense.category,
+        "date": expense.date
+    }
