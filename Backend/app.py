@@ -55,9 +55,9 @@ async def save_expenses(payload: ExpensePayload, db: Session = Depends(get_db)):
     return {"message": "User expenses saved successfully"}
 
 
-@app.post("/edit_expenses/{item_id}")
-async def edit_expenses(item_id: int, payload: ExpensePayload, db: Session = Depends(get_db)):
-    expense = db.query(ExpenseInfo).filter(ExpenseInfo.id == item_id).first()
+@app.post("/edit_expenses/{user_name}")
+async def edit_expenses(user_name: str, payload: ExpensePayload, db: Session = Depends(get_db)):
+    expense = db.query(ExpenseInfo).filter(ExpenseInfo.username == user_name).first()
     
     if not expense:
         raise HTTPException(status_code=404, detail="Expense record not found")
@@ -72,9 +72,9 @@ async def edit_expenses(item_id: int, payload: ExpensePayload, db: Session = Dep
     return {"message": "Data updated successfully"}
 
 
-@app.delete("/delete_data/{item_id}")
-async def delete(item_id: int, db: Session = Depends(get_db)):
-    expense = db.query(ExpenseInfo).filter(ExpenseInfo.id == item_id).first()
+@app.delete("/delete_data/{user_name}")
+async def delete(user_name: str, db: Session = Depends(get_db)):
+    expense = db.query(ExpenseInfo).filter(ExpenseInfo.username == user_name).first()
 
     if not expense:
         raise HTTPException(status_code=404, detail="Expense record not found")
@@ -84,9 +84,9 @@ async def delete(item_id: int, db: Session = Depends(get_db)):
     return {"message": "Record deleted successfully"}
 
 
-@app.get("/search_data/{item_id}")
-async def get(item_id: int, db: Session = Depends(get_db)):
-    expense = db.query(ExpenseInfo).filter(ExpenseInfo.id == item_id).first()
+@app.get("/search_data/{user_name}")
+async def get(user_name: str, db: Session = Depends(get_db)):
+    expense = db.query(ExpenseInfo).filter(ExpenseInfo.username == user_name).first()
 
     if not expense:
         raise HTTPException(status_code=404, detail="Record not found")
