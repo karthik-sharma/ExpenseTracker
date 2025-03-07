@@ -21,7 +21,7 @@ services:
       timeout: 3s
 
   fastapi:
-    build: .
+    build: ./backend
     container_name: fastapi-app
     volumes:
       - .:/app  # Mounts your local project into the container at /app
@@ -35,6 +35,17 @@ services:
       postgres:
         condition: service_healthy
     command: uvicorn Backend.app:app --host 0.0.0.0 --port 8000 --reload
+
+  react:
+    build: ./Frontend/ExpenseTracker-project
+    container_name: react-app
+    ports:
+      - "3000:80"  # Nginx serves on port 80 inside the container
+    networks:
+      - my_network
+    depends_on:
+      - fastapi
+
 
 networks:
   my_network:

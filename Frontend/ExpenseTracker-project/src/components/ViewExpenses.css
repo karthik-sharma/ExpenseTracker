@@ -1,0 +1,28 @@
+.view-expenses-container {
+    max-width: 600px;
+    margin: auto;
+    text-align: center;
+  }
+  
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+  
+  th {
+    background-color: #f4f4f4;
+  }
+  
+  .back-button {
+    background-color: #ff5733;
+    color: white;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+  }
+  

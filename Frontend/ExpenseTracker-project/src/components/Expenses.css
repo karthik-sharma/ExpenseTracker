@@ -1,0 +1,24 @@
+.expenses-container {
+    max-width: 500px;
+    margin: auto;
+    text-align: center;
+  }
+  
+  .expenses-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  button {
+    margin-top: 10px;
+  }
+  
+  .view-expenses-button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+  }
+  

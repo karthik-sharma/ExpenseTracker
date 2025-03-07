@@ -5,21 +5,36 @@ from .schema import UserPayload, ExpensePayload, LoginPayload
 from models import User, ExpenseInfo
 from db_connection import get_db
 from sqlalchemy.orm import Session
-from cryptography.fernet import Fernet
+import bcrypt
+from fastapi.middleware.cors import CORSMiddleware
 import os
 
 app = FastAPI()
 
-# Store and retrieve encryption key
-key = os.getenv("FERNET_KEY", Fernet.generate_key())
-fernet = Fernet(key)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (use specific domain in production)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password.encode(), salt)
+    return hashed_password.decode()  # Store as a string in DB
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
 
 
 @app.post("/register_user/")
 async def register_user(payload: UserPayload, db: Session = Depends(get_db)):
     if payload:
-        payload.password = fernet.encrypt(payload.password.encode()).decode()
-        new_user = User(**payload.__dict__)
+        hashed_password = hash_password(payload.password)  # Hash the password
+        new_user = User(username=payload.username, name=payload.name, password=hashed_password)
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
@@ -27,22 +42,14 @@ async def register_user(payload: UserPayload, db: Session = Depends(get_db)):
     return {"message": "New user registered successfully"}
 
 
-@app.post("/login_user/")
-async def login_user(payload: LoginPayload, db: Session = Depends(get_db)):
-    get_user = db.query(User).filter(User.username == payload.username).first()
-
-    if not get_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    try:
-        decrypt_password = fernet.decrypt(get_user.password.encode()).decode()
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid password")
-
-    if decrypt_password != payload.password:
-        raise HTTPException(status_code=401, detail="Incorrect password")
-
-    return {"message": "Login successful", "user": payload.username}
+@app.post("/login/")
+async def login(payload: LoginPayload, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == payload.username).first()
+    
+    if not user or not verify_password(payload.password, user.password):
+        return {"error": "Invalid username or password"}
+    
+    return {"message": "Login successful"}
 
 
 @app.post("/save_expenses/")
@@ -86,14 +93,17 @@ async def delete(user_name: str, db: Session = Depends(get_db)):
 
 @app.get("/search_data/{user_name}")
 async def get(user_name: str, db: Session = Depends(get_db)):
-    expense = db.query(ExpenseInfo).filter(ExpenseInfo.username == user_name).first()
+    expenses = db.query(ExpenseInfo).filter(ExpenseInfo.username == user_name).all()
 
-    if not expense:
-        raise HTTPException(status_code=404, detail="Record not found")
+    if not expenses:
+        raise HTTPException(status_code=404, detail="No records found")
 
-    return {
-        "username": expense.username,
-        "amount": expense.amount,
-        "category": expense.category,
-        "date": expense.date
-    }
+    return [
+        {
+            "username": exp.username,
+            "amount": exp.amount,
+            "category": exp.category,
+            "date": exp.date
+        }
+        for exp in expenses
+    ]
